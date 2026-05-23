@@ -4,8 +4,11 @@ import { useMultiplayer } from "@/lib/MultiplayerContext";
 import { useSettings } from "@/lib/SettingsContext";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { SYMBOL_PRESETS } from "@/lib/types";
 
 type ModeChoice = "local" | "remote";
+
+const NAME_MAX = 18;
 
 export function MultiplayerPanel() {
   const mp = useMultiplayer();
@@ -14,6 +17,12 @@ export function MultiplayerPanel() {
   const [mode, setMode] = useState<ModeChoice>("local");
   const [joinCode, setJoinCode] = useState("");
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [symbolPickerOpen, setSymbolPickerOpen] = useState(false);
+
+  const myColor =
+    mp.role === "joiner" ? settings.colors.p2 : settings.colors.p1;
+  const opponentColor =
+    mp.role === "joiner" ? settings.colors.p1 : settings.colors.p2;
 
   const statusLabel: Record<typeof mp.status, string> = {
     idle: "same phone · pass & play",
@@ -69,7 +78,7 @@ export function MultiplayerPanel() {
             <div className="text-[12px] text-bone truncate">
               {statusLabel[mp.status]}
               {mp.peerProfile && mp.status === "connected"
-                ? ` · vs ${mp.peerProfile.name}`
+                ? ` · ${mp.myName} vs ${mp.peerProfile.name}`
                 : ""}
             </div>
           </div>
@@ -152,6 +161,16 @@ export function MultiplayerPanel() {
                         transition={{ duration: 0.2 }}
                         className="space-y-4"
                       >
+                        <NameEditor
+                          name={mp.myName}
+                          symbol={mp.mySymbol}
+                          color={settings.colors.p1}
+                          onName={mp.setMyName}
+                          onSymbol={mp.setMySymbol}
+                          symbolOpen={symbolPickerOpen}
+                          setSymbolOpen={setSymbolPickerOpen}
+                          caption="how you'll appear on the other phone"
+                        />
                         <div className="flex flex-col md:flex-row gap-4">
                           {/* HOST */}
                           <div className="flex-1 p-4 rounded-xl border border-ink-500 bg-ink-900/50">
@@ -205,10 +224,24 @@ export function MultiplayerPanel() {
                 <div className="space-y-5">
                   <div className="flex items-baseline justify-between gap-3">
                     <h3 className="italic-display text-xl">your secret code</h3>
-                    <span className="text-[10px] uppercase tracking-[0.18em] text-bone-mute shrink-0">
-                      role · host · P/01
+                    <span
+                      className="text-[10px] uppercase tracking-[0.18em] shrink-0"
+                      style={{ color: settings.colors.p1 }}
+                    >
+                      hosting as {mp.myName || "—"}
                     </span>
                   </div>
+
+                  <NameEditor
+                    name={mp.myName}
+                    symbol={mp.mySymbol}
+                    color={settings.colors.p1}
+                    onName={mp.setMyName}
+                    onSymbol={mp.setMySymbol}
+                    symbolOpen={symbolPickerOpen}
+                    setSymbolOpen={setSymbolPickerOpen}
+                    caption="this is the name your opponent will see"
+                  />
 
                   {mp.roomCode ? (
                     <div
@@ -275,21 +308,38 @@ export function MultiplayerPanel() {
               )}
 
               {mp.status === "joining" && (
-                <div className="flex items-center gap-3 text-[12px] text-bone-dim">
-                  <motion.span
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-3 h-3 rounded-full border-2 border-bone-mute border-t-transparent"
+                <div className="space-y-4">
+                  <NameEditor
+                    name={mp.myName}
+                    symbol={mp.mySymbol}
+                    color={settings.colors.p2}
+                    onName={mp.setMyName}
+                    onSymbol={mp.setMySymbol}
+                    symbolOpen={symbolPickerOpen}
+                    setSymbolOpen={setSymbolPickerOpen}
+                    caption="how you'll show up to the host"
                   />
-                  shaking hands with the host…
+                  <div className="flex items-center gap-3 text-[12px] text-bone-dim">
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-3 h-3 rounded-full border-2 border-bone-mute border-t-transparent"
+                    />
+                    shaking hands with the host…
+                  </div>
                 </div>
               )}
 
               {mp.status === "connected" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-baseline justify-between gap-3">
                     <h3 className="italic-display text-xl">
-                      live · you are P/0{(mp.myPlayerIndex ?? 0) + 1}
+                      live ·{" "}
+                      <span style={{ color: myColor }}>{mp.myName || "you"}</span>
+                      <span className="text-bone-dim"> vs </span>
+                      <span style={{ color: opponentColor }}>
+                        {mp.peerProfile?.name || "opponent"}
+                      </span>
                     </h3>
                     <button
                       onClick={mp.disconnect}
@@ -298,20 +348,33 @@ export function MultiplayerPanel() {
                       leave room
                     </button>
                   </div>
+
+                  <NameEditor
+                    name={mp.myName}
+                    symbol={mp.mySymbol}
+                    color={myColor}
+                    onName={mp.setMyName}
+                    onSymbol={mp.setMySymbol}
+                    symbolOpen={symbolPickerOpen}
+                    setSymbolOpen={setSymbolPickerOpen}
+                    caption="editing here updates instantly on the other phone"
+                  />
+
                   <div className="grid grid-cols-2 gap-3 text-[11px]">
-                    <KV
+                    <PlayerChip
                       label="you"
-                      value={`P/0${(mp.myPlayerIndex ?? 0) + 1} · ${mp.role}`}
+                      name={mp.myName || "—"}
+                      symbol={mp.mySymbol}
+                      color={myColor}
                     />
-                    <KV
+                    <PlayerChip
                       label="opponent"
-                      value={
-                        mp.peerProfile
-                          ? `${mp.peerProfile.name} ${mp.peerProfile.symbol}`
-                          : "—"
-                      }
+                      name={mp.peerProfile?.name ?? "waiting…"}
+                      symbol={mp.peerProfile?.symbol ?? "·"}
+                      color={opponentColor}
                     />
                   </div>
+
                   {mp.roomCode && (
                     <div className="text-[10px] uppercase tracking-[0.18em] text-bone-mute">
                       code <span className="text-bone tabular">{mp.roomCode}</span>
@@ -388,13 +451,127 @@ function ModeCard({
   );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
+function PlayerChip({
+  label,
+  name,
+  symbol,
+  color,
+}: {
+  label: string;
+  name: string;
+  symbol: string;
+  color: string;
+}) {
   return (
-    <div className="card-flat p-3">
-      <div className="text-[9px] uppercase tracking-[0.18em] text-bone-mute">
-        {label}
+    <div
+      className="card-flat p-3 relative overflow-hidden"
+      style={{ borderColor: color }}
+    >
+      <div
+        aria-hidden
+        className="absolute -top-8 -right-8 w-20 h-20 rounded-full blur-2xl pointer-events-none"
+        style={{ background: color, opacity: 0.08 }}
+      />
+      <div className="flex items-center justify-between gap-2 relative">
+        <div className="text-[9px] uppercase tracking-[0.18em] text-bone-mute">
+          {label}
+        </div>
+        <span
+          className="text-base leading-none no-liga"
+          style={{ color, fontWeight: 600 }}
+        >
+          {symbol}
+        </span>
       </div>
-      <div className="text-bone mt-1 truncate">{value}</div>
+      <div className="text-bone mt-1 truncate" title={name}>
+        {name}
+      </div>
+    </div>
+  );
+}
+
+function NameEditor({
+  name,
+  symbol,
+  color,
+  onName,
+  onSymbol,
+  symbolOpen,
+  setSymbolOpen,
+  caption,
+}: {
+  name: string;
+  symbol: string;
+  color: string;
+  onName: (next: string) => void;
+  onSymbol: (next: string) => void;
+  symbolOpen: boolean;
+  setSymbolOpen: (next: boolean) => void;
+  caption: string;
+}) {
+  return (
+    <div
+      className="p-3 rounded-xl border bg-ink-900/40"
+      style={{ borderColor: "var(--border)" }}
+    >
+      <div className="text-[9px] uppercase tracking-[0.18em] text-bone-mute mb-2">
+        your name
+      </div>
+      <div className="flex gap-2 items-stretch">
+        <button
+          type="button"
+          onClick={() => setSymbolOpen(!symbolOpen)}
+          className="w-11 h-11 rounded-full border flex items-center justify-center no-liga text-xl shrink-0"
+          style={{ borderColor: color, color, fontWeight: 600 }}
+          aria-label="change symbol"
+          title="change symbol"
+        >
+          {symbol}
+        </button>
+        <input
+          value={name}
+          onChange={(e) => onName(e.target.value.slice(0, NAME_MAX))}
+          placeholder="your name"
+          maxLength={NAME_MAX}
+          className="flex-1 h-11 px-3 bg-ink-900/60 border border-ink-500 rounded-full text-bone text-[14px] focus:border-bone-mute outline-none"
+        />
+      </div>
+      <AnimatePresence initial={false}>
+        {symbolOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-3 grid grid-cols-6 gap-1.5">
+              {SYMBOL_PRESETS.map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => {
+                    onSymbol(s);
+                    setSymbolOpen(false);
+                  }}
+                  className="h-9 rounded-md border no-liga text-lg flex items-center justify-center transition-colors"
+                  style={{
+                    borderColor: s === symbol ? color : "var(--border)",
+                    color: s === symbol ? color : "var(--text)",
+                    background:
+                      s === symbol ? "rgba(255,255,255,0.04)" : "transparent",
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-bone-mute">
+        {caption}
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export default function Home() {
   const turnColor =
     state.currentPlayer === 0 ? settings.colors.p1 : settings.colors.p2;
   const turnName =
-    state.currentPlayer === 0 ? settings.player1.name : settings.player2.name;
+    state.currentPlayer === 0 ? mp.player1Name : mp.player2Name;
 
   return (
     <div className="px-5 md:px-10 pt-2 pb-10 flex-1 flex flex-col gap-5">

@@ -27,9 +27,9 @@ export function GameOverModal() {
     w === "tie"
       ? "a draw"
       : w === 0
-      ? settings.player1.name
+      ? mp.player1Name
       : w === 1
-      ? settings.player2.name
+      ? mp.player2Name
       : "";
   const winnerColor =
     w === 0 ? settings.colors.p1 : w === 1 ? settings.colors.p2 : "var(--text)";
@@ -116,15 +116,15 @@ export function GameOverModal() {
 
               <div className="mt-6 grid grid-cols-2 gap-3 text-sm relative">
                 <ResultBlock
-                  label={settings.player1.name}
-                  symbol={settings.player1.symbol}
+                  label={mp.player1Name}
+                  symbol={mp.player1Symbol}
                   score={state.scores[0]}
                   color={settings.colors.p1}
                   emphasized={w === 0}
                 />
                 <ResultBlock
-                  label={settings.player2.name}
-                  symbol={settings.player2.symbol}
+                  label={mp.player2Name}
+                  symbol={mp.player2Symbol}
                   score={state.scores[1]}
                   color={settings.colors.p2}
                   emphasized={w === 1}

@@ -2,6 +2,7 @@
 
 import { useGame } from "@/lib/GameContext";
 import { useSettings } from "@/lib/SettingsContext";
+import { useMultiplayer } from "@/lib/MultiplayerContext";
 import { AnimatePresence, motion } from "framer-motion";
 import { PlayerIndex } from "@/lib/types";
 
@@ -26,21 +27,21 @@ function AnimatedNumber({ value, color }: { value: number; color: string }) {
 }
 
 function PlayerCard({
-  index,
   name,
   symbol,
   score,
   active,
   totalNeeded,
   color,
+  badge,
 }: {
-  index: PlayerIndex;
   name: string;
   symbol: string;
   score: number;
   active: boolean;
   totalNeeded: number;
   color: string;
+  badge: string;
 }) {
   return (
     <motion.div
@@ -80,7 +81,8 @@ function PlayerCard({
               style={{ background: color, boxShadow: active ? `0 0 10px ${color}` : "none" }}
             />
             <span className="text-[10px] uppercase tracking-[0.18em] text-bone-dim truncate">
-              {active ? "in turn" : "waiting"} · P/0{index + 1}
+              {active ? "in turn" : "waiting"}
+              {badge ? ` · ${badge}` : ""}
             </span>
           </div>
           <div className="italic-display text-2xl md:text-[28px] truncate" title={name}>
@@ -113,8 +115,17 @@ function PlayerCard({
 export function Scoreboard() {
   const { state } = useGame();
   const { settings } = useSettings();
+  const mp = useMultiplayer();
   const total = state.gridSize * state.gridSize;
   const remaining = total - (state.scores[0] + state.scores[1]);
+
+  // In multiplayer, badge shows "you" / "opponent" relative to local user.
+  // In local play, no badge — names alone are enough.
+  const badgeFor = (idx: PlayerIndex): string => {
+    if (!mp.enabled) return "";
+    if (mp.myPlayerIndex == null) return "";
+    return mp.myPlayerIndex === idx ? "you" : "opponent";
+  };
 
   return (
     <div className="w-full max-w-[660px] mx-auto">
@@ -133,22 +144,22 @@ export function Scoreboard() {
 
       <div className="flex gap-3 md:gap-4">
         <PlayerCard
-          index={0}
-          name={settings.player1.name}
-          symbol={settings.player1.symbol}
+          name={mp.player1Name}
+          symbol={mp.player1Symbol}
           score={state.scores[0]}
           active={!state.isGameOver && state.currentPlayer === 0}
           totalNeeded={total}
           color={settings.colors.p1}
+          badge={badgeFor(0)}
         />
         <PlayerCard
-          index={1}
-          name={settings.player2.name}
-          symbol={settings.player2.symbol}
+          name={mp.player2Name}
+          symbol={mp.player2Symbol}
           score={state.scores[1]}
           active={!state.isGameOver && state.currentPlayer === 1}
           totalNeeded={total}
           color={settings.colors.p2}
+          badge={badgeFor(1)}
         />
       </div>
     </div>

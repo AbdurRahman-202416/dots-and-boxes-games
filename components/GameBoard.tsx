@@ -225,7 +225,7 @@ export function GameBoard() {
                     }}
                     transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
                   >
-                    {owner === 0 ? settings.player1.symbol : settings.player2.symbol}
+                    {owner === 0 ? mp.player1Symbol : mp.player2Symbol}
                   </motion.text>
                 </motion.g>
               ) : null
