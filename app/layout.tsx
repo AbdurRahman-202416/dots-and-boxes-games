@@ -29,7 +29,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#08080C",
+  themeColor: "#E9DDB7",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,8 +39,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="relative min-h-[100dvh] flex flex-col">
             <Nav />
-            <main className="flex-1 flex flex-col">{children}</main>
-            <footer className="px-5 md:px-10 py-6 text-center text-[11px] text-bone-mute">
+            <main className="flex-1 flex flex-col min-h-0">{children}</main>
+            <footer className="px-5 md:px-10 py-4 sm:py-6 text-center text-[11px] text-bone-mute">
               © {new Date().getFullYear()} Pipopipette. All rights reserved.
             </footer>
           </div>
