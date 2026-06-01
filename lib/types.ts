@@ -63,8 +63,8 @@ export interface DotCoord {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  player1: { name: "Mina", symbol: "◆" },
-  player2: { name: "Raju", symbol: "✦" },
+  player1: { name: "Tom", symbol: "◆" },
+  player2: { name: "Jerry", symbol: "✦" },
   gridSize: 5,
   colors: THEME_PRESETS[0].colors,
 };
