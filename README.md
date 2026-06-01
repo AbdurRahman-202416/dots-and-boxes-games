@@ -172,7 +172,7 @@ npx next export             # generates ./out
 
 Settings are stored in `localStorage` under the keys used by
 `SettingsContext`. Clearing browser storage resets to defaults
-(`Inkwell` palette, `5×5` grid, players "Mina" and "Raju").
+(`Inkwell` palette, `5×5` grid, players "Tom" and "Jerry").
 
 ---
 
