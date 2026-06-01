@@ -62,7 +62,7 @@ const NAME_STORAGE_KEY = "dab.mp.name.v1";
 function readPersistedName(): { name: string; symbol: string } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(NAME_STORAGE_KEY);
+    const raw = window.localStorage.getItem(NAME_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed.name === "string" && typeof parsed.symbol === "string") {
@@ -77,7 +77,7 @@ function readPersistedName(): { name: string; symbol: string } | null {
 function writePersistedName(name: string, symbol: string) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(NAME_STORAGE_KEY, JSON.stringify({ name, symbol }));
+    window.localStorage.setItem(NAME_STORAGE_KEY, JSON.stringify({ name, symbol }));
   } catch {
     /* ignore */
   }
