@@ -58,7 +58,7 @@ export function Confetti({ active, count = 90 }: { active: boolean; count?: numb
     const styles = getComputedStyle(document.documentElement);
     const get = (k: string) => styles.getPropertyValue(k).trim();
     setThemeColors(
-      [get("--p1"), get("--p2"), get("--accent"), "#F5F1E8", "#FFB627"].filter(Boolean)
+      [get("--p1"), get("--p2"), get("--accent"), "#1C1605", "#B45309"].filter(Boolean)
     );
   }, [active]);
 
