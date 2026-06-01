@@ -21,6 +21,7 @@ export function createInitialState(gridSize: number): GameState {
     history: [],
     isGameOver: false,
     lastMove: null,
+    lastMovePerPlayer: [null, null],
   };
 }
 
@@ -83,6 +84,12 @@ export function applyMove(state: GameState, id: LineId): GameState {
   const nextPlayer: PlayerIndex =
     boxesCompleted.length > 0 ? state.currentPlayer : ((1 - state.currentPlayer) as PlayerIndex);
 
+  const lastMovePerPlayer: [Move | null, Move | null] = [
+    state.lastMovePerPlayer[0],
+    state.lastMovePerPlayer[1],
+  ];
+  lastMovePerPlayer[state.currentPlayer] = move;
+
   return {
     ...state,
     lines: newLines,
@@ -92,6 +99,7 @@ export function applyMove(state: GameState, id: LineId): GameState {
     history: [...state.history, move],
     isGameOver,
     lastMove: move,
+    lastMovePerPlayer,
   };
 }
 
