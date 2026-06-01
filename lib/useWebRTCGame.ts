@@ -6,20 +6,33 @@ import type { DataConnection, Peer } from "peerjs";
 /** Namespace prefix so our short codes don't collide with other PeerJS apps on the same cloud broker. */
 const PEER_PREFIX = "dab-";
 
-/** sessionStorage key used to recover a live room across page reloads. */
+/**
+ * localStorage key used to recover a live room across page reloads — and
+ * even across tab close / reopen, so a refresh on either side picks up
+ * exactly where the player left off.
+ */
 const SESSION_KEY = "dab.mp.session.v1";
+
+/** How long a stored session is considered fresh enough to auto-resume. */
+const SESSION_TTL_MS = 1000 * 60 * 60 * 6; // 6 hours
+
+/** Backoff schedule for re-claiming a peer ID after a refresh — the broker
+ *  may briefly still hold the previous registration, so we retry quietly. */
+const RESUME_RETRY_DELAYS_MS = [800, 1800, 3500, 6000];
 
 interface PersistedSession {
   role: "host" | "joiner";
   roomCode: string;
   name: string;
   symbol: string;
+  /** Timestamp the session was last written — used to expire stale rooms. */
+  savedAt: number;
 }
 
 function readSession(): PersistedSession | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = window.localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (
@@ -27,7 +40,13 @@ function readSession(): PersistedSession | null {
       (parsed.role === "host" || parsed.role === "joiner") &&
       typeof parsed.roomCode === "string"
     ) {
-      return parsed as PersistedSession;
+      const savedAt = typeof parsed.savedAt === "number" ? parsed.savedAt : 0;
+      if (savedAt && Date.now() - savedAt > SESSION_TTL_MS) {
+        // expired — drop it so the next mount starts clean
+        window.localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+      return { ...parsed, savedAt } as PersistedSession;
     }
   } catch {
     /* malformed — ignore */
@@ -35,10 +54,11 @@ function readSession(): PersistedSession | null {
   return null;
 }
 
-function writeSession(s: PersistedSession) {
+function writeSession(s: Omit<PersistedSession, "savedAt">) {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    const payload: PersistedSession = { ...s, savedAt: Date.now() };
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
   } catch {
     /* storage may be unavailable */
   }
@@ -47,7 +67,7 @@ function writeSession(s: PersistedSession) {
 function clearSession() {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
   } catch {
     /* no-op */
   }
@@ -86,6 +106,7 @@ export type MultiplayerStatus =
   | "hosting"
   | "waiting"
   | "joining"
+  | "reconnecting"
   | "connected"
   | "disconnected"
   | "error";
@@ -129,6 +150,10 @@ export interface WebRTCGame {
  *   • joinGame(id) → creates a Peer, opens a connection to the given peerId
  *   • Auto-joins if the current URL has `?room=<id>`
  *   • Role assignment is deterministic: host = Player 1 (index 0), joiner = Player 2 (index 1)
+ *   • Live rooms are persisted to `localStorage` so a page refresh — on
+ *     either side — reconnects the same player back to the same room without
+ *     manual intervention. The user can still leave at any time via
+ *     `disconnect()`, which is the only thing that erases the saved session.
  *
  * Side-effects (move, reset, grid change) are delivered to the parent via callbacks,
  * so this hook never touches your game state directly.
@@ -155,6 +180,12 @@ export function useWebRTCGame({
   const roomCodeRef = useRef<string | null>(null);
   const profileRef = useRef(myProfile);
   const gridRef = useRef(gridSize);
+
+  // Tracks whether the current host/join call originated from an auto-resume,
+  // so we can quietly retry transient broker errors before surfacing them.
+  const resumingRef = useRef(false);
+  const resumeAttemptRef = useRef(0);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep callback refs current so we never bind stale closures into PeerJS handlers.
   const cbRef = useRef({ onMove, onReset, onGridChange, onPeerProfile });
@@ -207,6 +238,15 @@ export function useWebRTCGame({
     });
   }, []);
 
+  /** Tear down any existing Peer / DataConnection without touching state — used
+   *  before retrying an auto-resume so we don't leak peers. */
+  const teardownPeerOnly = useCallback(() => {
+    try { connRef.current?.close(); } catch { /* already closed */ }
+    try { peerRef.current?.destroy(); } catch { /* already destroyed */ }
+    connRef.current = null;
+    peerRef.current = null;
+  }, []);
+
   const attachConnection = useCallback((conn: DataConnection) => {
     connRef.current = conn;
     setRemotePeerId(conn.peer);
@@ -220,6 +260,9 @@ export function useWebRTCGame({
         safeSend({ type: "GRID", gridSize: gridRef.current });
       }
       persistIfPossible();
+      // Resume succeeded — clear the retry bookkeeping.
+      resumingRef.current = false;
+      resumeAttemptRef.current = 0;
     });
 
     conn.on("data", (raw) => {
@@ -249,12 +292,37 @@ export function useWebRTCGame({
       setError(err?.message || String(err));
       setStatus("error");
     });
-  }, [safeSend]);
+  }, [safeSend, persistIfPossible]);
+
+  /** Common error handler shared by host / join — during an auto-resume we
+   *  retry quietly with backoff, otherwise we surface the error and clear
+   *  the persisted session so the user can recover manually. */
+  const handlePeerError = useCallback(
+    (err: Error, retry: () => void) => {
+      const isResuming = resumingRef.current;
+      const attempt = resumeAttemptRef.current;
+      if (isResuming && attempt < RESUME_RETRY_DELAYS_MS.length) {
+        resumeAttemptRef.current = attempt + 1;
+        setStatus("reconnecting");
+        const delay = RESUME_RETRY_DELAYS_MS[attempt];
+        // Tear down the failed peer before retrying so we don't leak it.
+        teardownPeerOnly();
+        if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = setTimeout(retry, delay);
+        return;
+      }
+      resumingRef.current = false;
+      setError(err?.message || String(err));
+      setStatus("error");
+      clearSession();
+    },
+    [teardownPeerOnly]
+  );
 
   const hostGameWithCode = useCallback(
     async (code: string) => {
       setError(null);
-      setStatus("hosting");
+      setStatus(resumingRef.current ? "reconnecting" : "hosting");
       try {
         const { default: Peer } = await import("peerjs");
         const peer = new Peer(codeToPeerId(code));
@@ -272,7 +340,10 @@ export function useWebRTCGame({
             url.searchParams.set("room", shortCode);
             setShareUrl(url.toString());
           }
-          setStatus("waiting");
+          // If a peer was already connected (mid-game refresh on host),
+          // attachConnection has already flipped to "connected" — don't
+          // clobber it with "waiting".
+          setStatus((s) => (s === "connected" ? s : "waiting"));
           // Persist now so a refresh while waiting can resume hosting.
           persistIfPossible();
         });
@@ -282,18 +353,18 @@ export function useWebRTCGame({
         });
 
         peer.on("error", (err: Error) => {
-          setError(err?.message || String(err));
-          setStatus("error");
-          // The broker may still hold the old peer ID right after a refresh;
-          // drop the session so the user can host fresh instead of looping.
-          clearSession();
+          handlePeerError(err, () => {
+            hostGameWithCode(code);
+          });
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setStatus("error");
+        handlePeerError(
+          e instanceof Error ? e : new Error(String(e)),
+          () => hostGameWithCode(code)
+        );
       }
     },
-    [attachConnection, persistIfPossible]
+    [attachConnection, persistIfPossible, handlePeerError]
   );
 
   const hostGame = useCallback(
@@ -305,7 +376,7 @@ export function useWebRTCGame({
     async (codeOrPeerId: string) => {
       if (!codeOrPeerId) return;
       setError(null);
-      setStatus("joining");
+      setStatus(resumingRef.current ? "reconnecting" : "joining");
       try {
         const { default: Peer } = await import("peerjs");
         const peer = new Peer();
@@ -329,24 +400,30 @@ export function useWebRTCGame({
         });
 
         peer.on("error", (err: Error) => {
-          setError(err?.message || String(err));
-          setStatus("error");
-          // Host probably gone — clear the session so refresh won't keep retrying.
-          clearSession();
+          handlePeerError(err, () => {
+            joinGame(codeOrPeerId);
+          });
         });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setStatus("error");
+        handlePeerError(
+          e instanceof Error ? e : new Error(String(e)),
+          () => joinGame(codeOrPeerId)
+        );
       }
     },
-    [attachConnection]
+    [attachConnection, handlePeerError]
   );
 
   const disconnect = useCallback(() => {
-    try { connRef.current?.close(); } catch { /* already closed */ }
-    try { peerRef.current?.destroy(); } catch { /* already destroyed */ }
-    connRef.current = null;
-    peerRef.current = null;
+    // Cancel any pending auto-resume retry — the user has explicitly opted out.
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+    resumingRef.current = false;
+    resumeAttemptRef.current = 0;
+
+    teardownPeerOnly();
     roleRef.current = null;
     roomCodeRef.current = null;
     setRole(null);
@@ -364,7 +441,7 @@ export function useWebRTCGame({
         window.history.replaceState({}, "", url.toString());
       }
     }
-  }, []);
+  }, [teardownPeerOnly]);
 
   // Resume an in-flight room after a page reload, then fall back to URL-based auto-join.
   const autoStartedRef = useRef(false);
@@ -375,6 +452,10 @@ export function useWebRTCGame({
 
     const stored = readSession();
     if (stored) {
+      // Mark this as a resume so transient broker errors get retried quietly
+      // instead of dropping the session on the first failure.
+      resumingRef.current = true;
+      resumeAttemptRef.current = 0;
       if (stored.role === "host") {
         hostGameWithCode(stored.roomCode);
       } else {
@@ -393,6 +474,7 @@ export function useWebRTCGame({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
       try { connRef.current?.close(); } catch { /* connection may already be closed */ }
       try { peerRef.current?.destroy(); } catch { /* peer may already be destroyed */ }
     };
