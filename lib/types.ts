@@ -26,14 +26,14 @@ export interface ThemePreset {
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: "atelier", name: "Atelier", mood: "house default", colors: { p1: "#C8FF00", p2: "#FF4D6D", accent: "#5CE5FF" } },
-  { id: "midnight", name: "Midnight Carnival", mood: "neon & gold", colors: { p1: "#5CE5FF", p2: "#FFB627", accent: "#C8FF00" } },
-  { id: "rosewood", name: "Rosewood", mood: "warm dusk", colors: { p1: "#FF8A4C", p2: "#E84A5F", accent: "#FFD166" } },
-  { id: "spirit", name: "Spirit Bloom", mood: "soft contrast", colors: { p1: "#3FE4A6", p2: "#FF6B9D", accent: "#A4B8FF" } },
-  { id: "velvet", name: "Velvet Vault", mood: "royal calm", colors: { p1: "#BC9CFF", p2: "#FF7A45", accent: "#7DD3FC" } },
-  { id: "glacier", name: "Glacier", mood: "cool minimal", colors: { p1: "#7DD3FC", p2: "#FB7185", accent: "#A4B8FF" } },
-  { id: "bone", name: "Bone & Coral", mood: "editorial", colors: { p1: "#F5F1E8", p2: "#FF4D6D", accent: "#FFB627" } },
-  { id: "atomic", name: "Atomic", mood: "duel of greens", colors: { p1: "#C8FF00", p2: "#5CE5FF", accent: "#FFB627" } },
+  { id: "inkwell", name: "Inkwell", mood: "classic two-pen", colors: { p1: "#1E40AF", p2: "#B91C1C", accent: "#B45309" } },
+  { id: "atelier", name: "Atelier", mood: "soft editorial", colors: { p1: "#0F766E", p2: "#BE123C", accent: "#B45309" } },
+  { id: "rosewood", name: "Rosewood", mood: "warm dusk", colors: { p1: "#9A3412", p2: "#BE123C", accent: "#A16207" } },
+  { id: "spirit", name: "Spirit Bloom", mood: "soft contrast", colors: { p1: "#047857", p2: "#BE185D", accent: "#7C3AED" } },
+  { id: "velvet", name: "Velvet Vault", mood: "royal calm", colors: { p1: "#5B21B6", p2: "#C2410C", accent: "#0369A1" } },
+  { id: "glacier", name: "Glacier", mood: "cool minimal", colors: { p1: "#0369A1", p2: "#BE123C", accent: "#475569" } },
+  { id: "field", name: "Field Notes", mood: "earthy", colors: { p1: "#365314", p2: "#9A3412", accent: "#92400E" } },
+  { id: "midnight", name: "Midnight", mood: "moody ink", colors: { p1: "#1E1B4B", p2: "#7F1D1D", accent: "#78350F" } },
 ];
 
 export type LineId = string;
@@ -53,6 +53,8 @@ export interface GameState {
   history: Move[];
   isGameOver: boolean;
   lastMove: Move | null;
+  /** Most recent move made by each player, indexed by player slot. */
+  lastMovePerPlayer: [Move | null, Move | null];
 }
 
 export interface DotCoord {
@@ -61,8 +63,8 @@ export interface DotCoord {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  player1: { name: "Player One", symbol: "◆" },
-  player2: { name: "Player Two", symbol: "✦" },
+  player1: { name: "Mina", symbol: "◆" },
+  player2: { name: "Raju", symbol: "✦" },
   gridSize: 5,
   colors: THEME_PRESETS[0].colors,
 };
