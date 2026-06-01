@@ -5,23 +5,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // "ink-*" used to be the dark UI surfaces. On the parchment theme we
+        // keep the class names but flip them to map onto warm tan tones so the
+        // existing `bg-ink-800/40`, `border-ink-500` style attributes still
+        // produce a coherent (now light) result.
         ink: {
-          900: "#08080C",
-          800: "#0E0E14",
-          700: "#13131A",
-          600: "#1A1A24",
-          500: "#23232F",
-          400: "#2E2E3C",
+          900: "#FAF1D6",
+          800: "#F2E5B9",
+          700: "#E7D5A1",
+          600: "#D6C089",
+          500: "#C9B580",
+          400: "#A38B57",
         },
+        // "bone-*" used to be the light text tones. Now they describe the
+        // dark warm-ink text that sits on top of parchment.
         bone: {
-          DEFAULT: "#F5F1E8",
-          dim: "#A8A498",
-          mute: "#6B6859",
+          DEFAULT: "#1C1605",
+          dim: "#5A4623",
+          mute: "#8A7547",
         },
-        acid: "#C8FF00",
-        coral: "#FF4D6D",
-        sky: "#5CE5FF",
-        amber: "#FFB627",
+        acid: "#7A8F00",
+        coral: "#B91C1C",
+        sky: "#1E40AF",
+        amber: "#B45309",
       },
       fontFamily: {
         display: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
