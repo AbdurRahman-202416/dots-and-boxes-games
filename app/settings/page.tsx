@@ -83,7 +83,7 @@ export default function SettingsPage() {
                   className="relative h-[88px] md:h-24 rounded-xl border transition-colors flex flex-col items-center justify-center gap-1 overflow-hidden"
                   style={{
                     borderColor: active ? settings.colors.p1 : "var(--border)",
-                    background: active ? "rgba(255,255,255,0.02)" : "transparent",
+                    background: active ? "rgba(255, 248, 220, 0.55)" : "transparent",
                   }}
                 >
                   <MiniGrid n={s} accent={settings.colors.p1} active={active} />
@@ -195,8 +195,8 @@ function ThemeStudio({
                 layoutId="theme-tab"
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(28,22,5,0.07)",
+                  border: "1px solid rgba(28,22,5,0.12)",
                 }}
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
@@ -225,7 +225,7 @@ function ThemeStudio({
                   className="text-left p-3 rounded-xl border transition-all relative overflow-hidden group"
                   style={{
                     borderColor: isActive ? preset.colors.p1 : "var(--border)",
-                    background: isActive ? "rgba(255,255,255,0.025)" : "transparent",
+                    background: isActive ? "rgba(255, 248, 220, 0.6)" : "transparent",
                   }}
                 >
                   <div className="flex gap-1 mb-2.5">
@@ -252,7 +252,7 @@ function ThemeStudio({
                     <motion.span
                       layoutId="theme-active"
                       className="absolute top-2 right-2 text-[9px] uppercase tracking-[0.18em] px-1.5 py-0.5 rounded-full"
-                      style={{ background: preset.colors.p1, color: "#07070B" }}
+                      style={{ background: preset.colors.p1, color: "#F7EFD6" }}
                     >
                       on
                     </motion.span>
@@ -322,7 +322,10 @@ function ThemePreview({ colors }: { colors: ColorScheme }) {
       </div>
 
       {/* mini board preview */}
-      <div className="relative mt-4 grid grid-cols-5 gap-[3px] p-2 rounded-lg border border-ink-500/60 bg-black/30 max-w-[260px]">
+      <div
+        className="relative mt-4 grid grid-cols-5 gap-[3px] p-2 rounded-lg border border-ink-500/60 max-w-[260px]"
+        style={{ background: "rgba(255, 248, 220, 0.6)" }}
+      >
         {Array.from({ length: 25 }).map((_, i) => {
           const fillIdx = [0, 1, 5, 6, 12, 18].includes(i);
           const isP1 = [0, 5, 12].includes(i);
@@ -493,7 +496,7 @@ function PlayerEditor({
                   style={{
                     borderColor: active ? color : "var(--border)",
                     color: active ? color : "var(--text)",
-                    background: active ? "rgba(255,255,255,0.025)" : "transparent",
+                    background: active ? "rgba(255, 248, 220, 0.6)" : "transparent",
                   }}
                 >
                   {s}
