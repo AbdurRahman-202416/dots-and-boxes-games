@@ -29,6 +29,7 @@ export function MultiplayerPanel() {
     hosting: "creating secret code…",
     waiting: "waiting for your friend to join",
     joining: "joining…",
+    reconnecting: "reconnecting to your room…",
     connected: "live · two phones",
     disconnected: "your friend left",
     error: "connection error",
@@ -430,7 +431,7 @@ function ModeCard({
       className="relative text-left p-4 rounded-xl border transition-colors overflow-hidden"
       style={{
         borderColor: active ? color : "var(--border)",
-        background: active ? "rgba(255,255,255,0.025)" : "transparent",
+        background: active ? "rgba(255, 248, 220, 0.55)" : "transparent",
       }}
     >
       <div
@@ -559,7 +560,7 @@ function NameEditor({
                     borderColor: s === symbol ? color : "var(--border)",
                     color: s === symbol ? color : "var(--text)",
                     background:
-                      s === symbol ? "rgba(255,255,255,0.04)" : "transparent",
+                      s === symbol ? "rgba(255, 248, 220, 0.6)" : "transparent",
                   }}
                 >
                   {s}
