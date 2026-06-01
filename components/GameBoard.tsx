@@ -15,9 +15,9 @@ import {
 } from "react";
 
 const PAD = 0.6;
-const DOT_R = 0.075;
+const DOT_R = 0.07;
 const DOT_HIT_R = 0.22;
-const LINE_W = 0.06;
+const LINE_W = 0.07;
 const HIT_W = 0.28;
 
 const playerColor = (p: PlayerIndex) => (p === 0 ? "var(--p1)" : "var(--p2)");
@@ -140,18 +140,26 @@ export function GameBoard() {
 
   const turnColor = playerColor(state.currentPlayer);
 
+  // Midpoint coordinates of a given line for marker placement.
+  const lineMid = (id: LineId) => {
+    const { orientation, r, c } = parseLineId(id);
+    return orientation === "h"
+      ? { x: c + 0.5, y: r, perpDx: 0, perpDy: 1 }
+      : { x: c, y: r + 0.5, perpDx: 1, perpDy: 0 };
+  };
+
   return (
     <div
-      className="board-surface relative w-full max-w-[640px] aspect-square mx-auto"
+      className="board-surface relative w-full aspect-square max-w-[640px] max-h-full mx-auto p-2 sm:p-3 md:p-4"
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* corner brackets — decorative editorial framing */}
+      {/* corner brackets — paper editorial framing, in warm tan */}
       <Brackets />
 
       <svg
         ref={svgRef}
         viewBox={`${-PAD} ${-PAD} ${VIEW} ${VIEW}`}
-        className="w-full h-full"
+        className="w-full h-full relative"
         onPointerMove={onSvgPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
@@ -160,7 +168,7 @@ export function GameBoard() {
         }}
         style={{ touchAction: "none" }}
       >
-        {/* dim grid trace */}
+        {/* faint pencil grid trace between undrawn dots */}
         {hLines.map(({ id, r, c }) => {
           const coords = hLineCoords(r, c);
           const drawn = state.lines.has(id);
@@ -168,9 +176,10 @@ export function GameBoard() {
             <line
               key={`hg-${id}`}
               {...coords}
-              stroke="var(--border)"
-              strokeWidth={0.008}
-              strokeDasharray="0.04 0.06"
+              stroke="var(--grid)"
+              strokeOpacity={0.45}
+              strokeWidth={0.01}
+              strokeDasharray="0.04 0.08"
               strokeLinecap="round"
             />
           ) : null;
@@ -182,9 +191,10 @@ export function GameBoard() {
             <line
               key={`vg-${id}`}
               {...coords}
-              stroke="var(--border)"
-              strokeWidth={0.008}
-              strokeDasharray="0.04 0.06"
+              stroke="var(--grid)"
+              strokeOpacity={0.45}
+              strokeWidth={0.01}
+              strokeDasharray="0.04 0.08"
               strokeLinecap="round"
             />
           ) : null;
@@ -203,19 +213,19 @@ export function GameBoard() {
                     height={1}
                     fill={playerColor(owner)}
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: lastBoxes.has(`${r}-${c}`) ? 0.18 : 0.12 }}
+                    animate={{ opacity: lastBoxes.has(`${r}-${c}`) ? 0.22 : 0.14 }}
                     transition={{ duration: 0.4 }}
                   />
                   <motion.text
                     x={c + 0.5}
-                    y={c % 2 === r % 2 ? r + 0.54 : r + 0.54}
+                    y={r + 0.54}
                     fill={playerColor(owner)}
                     fontSize={0.46}
                     textAnchor="middle"
                     dominantBaseline="central"
                     style={{
                       fontFamily: "ui-monospace, monospace",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                     initial={{ scale: 0, opacity: 0, rotate: -8 }}
                     animate={{
@@ -253,7 +263,7 @@ export function GameBoard() {
               animate={{
                 pathLength: 1,
                 opacity: 1,
-                filter: isLast ? "drop-shadow(0 0 4px currentColor)" : "none",
+                filter: isLast ? "drop-shadow(0 0 3px currentColor)" : "none",
               }}
               transition={{ duration: 0.28 }}
             />
@@ -278,10 +288,72 @@ export function GameBoard() {
               animate={{
                 pathLength: 1,
                 opacity: 1,
-                filter: isLast ? "drop-shadow(0 0 4px currentColor)" : "none",
+                filter: isLast ? "drop-shadow(0 0 3px currentColor)" : "none",
               }}
               transition={{ duration: 0.28 }}
             />
+          );
+        })}
+
+        {/* Per-player "last move" markers — each player's most recent line
+            gets a bright color disc with a paper-white ring at its midpoint,
+            so the opponent immediately sees what was just played. The very
+            most recent move (overall) pulses with an animated halo. */}
+        {([0, 1] as PlayerIndex[]).map((idx) => {
+          const move = state.lastMovePerPlayer[idx];
+          if (!move) return null;
+          const { x, y } = lineMid(move.lineId);
+          const color = playerColor(idx);
+          const isLatest = move.lineId === lastMoveLineId;
+          return (
+            <g key={`lastmark-${idx}`} style={{ pointerEvents: "none" }}>
+              {isLatest && (
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={0.028}
+                  initial={{ r: 0.16, opacity: 0.85 }}
+                  animate={{
+                    r: [0.16, 0.38, 0.16],
+                    opacity: [0.85, 0, 0.85],
+                  }}
+                  transition={{
+                    duration: 1.6,
+                    repeat: Infinity,
+                    ease: "easeOut",
+                  }}
+                />
+              )}
+              {/* paper-colored ring to lift the badge off the line */}
+              <circle
+                cx={x}
+                cy={y}
+                r={0.135}
+                fill="#FBF4DD"
+                stroke={color}
+                strokeWidth={0.018}
+                opacity={0.95}
+              />
+              {/* solid color disc in player color */}
+              <motion.circle
+                cx={x}
+                cy={y}
+                r={0.105}
+                fill={color}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 380, damping: 22 }}
+              />
+              {/* tiny paper-white dot to mark the badge clearly */}
+              <circle
+                cx={x}
+                cy={y}
+                r={0.035}
+                fill="#FBF4DD"
+              />
+            </g>
           );
         })}
 
@@ -303,7 +375,7 @@ export function GameBoard() {
               strokeLinecap="round"
               strokeDasharray="0.06 0.06"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.55 }}
+              animate={{ opacity: 0.6 }}
               transition={{ duration: 0.12 }}
             />
           );
@@ -359,7 +431,7 @@ export function GameBoard() {
           );
         })}
 
-        {/* Dots */}
+        {/* Dots — small dark pen pokes on the paper */}
         {Array.from({ length: N + 1 }).map((_, r) =>
           Array.from({ length: N + 1 }).map((_, c) => {
             const isActive = dragStart?.r === r && dragStart?.c === c;
@@ -419,7 +491,16 @@ export function GameBoard() {
             transition={{ duration: 0.25 }}
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
           >
-            <div className="px-4 py-2 rounded-full border border-ink-500 bg-ink-900/70 backdrop-blur-sm flex items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-bone">
+            <div
+              className="px-4 py-2 rounded-full border flex items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-bone"
+              style={{
+                borderColor: "var(--border-strong)",
+                background: "rgba(247, 239, 214, 0.85)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                boxShadow: "0 8px 24px -16px rgba(60, 40, 10, 0.45)",
+              }}
+            >
               <motion.span
                 animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1.4, repeat: Infinity }}
@@ -434,27 +515,31 @@ export function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Hint text */}
-      <div className="absolute -bottom-8 left-0 right-0 text-center text-[10px] uppercase tracking-[0.18em] text-bone-mute pointer-events-none">
-        {mp.enabled && mp.status === "connected"
-          ? locked
-            ? "opponent is thinking"
-            : "your turn · tap or swipe"
-          : "tap a line · or swipe between dots"}
-      </div>
     </div>
   );
 }
 
 function Brackets() {
-  const cls = "absolute w-3 h-3 border-bone/30";
+  const cls =
+    "absolute w-3 h-3 pointer-events-none";
   return (
     <>
-      <span className={`${cls} top-0 left-0 border-t border-l`} />
-      <span className={`${cls} top-0 right-0 border-t border-r`} />
-      <span className={`${cls} bottom-0 left-0 border-b border-l`} />
-      <span className={`${cls} bottom-0 right-0 border-b border-r`} />
+      <span
+        className={`${cls} top-1.5 left-1.5 border-t border-l`}
+        style={{ borderColor: "var(--border-strong)" }}
+      />
+      <span
+        className={`${cls} top-1.5 right-1.5 border-t border-r`}
+        style={{ borderColor: "var(--border-strong)" }}
+      />
+      <span
+        className={`${cls} bottom-1.5 left-1.5 border-b border-l`}
+        style={{ borderColor: "var(--border-strong)" }}
+      />
+      <span
+        className={`${cls} bottom-1.5 right-1.5 border-b border-r`}
+        style={{ borderColor: "var(--border-strong)" }}
+      />
     </>
   );
 }
