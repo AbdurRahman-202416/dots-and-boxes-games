@@ -56,9 +56,9 @@ export function GameOverModal() {
             <motion.div
               className="absolute inset-0"
               style={{
-                background: "rgba(7, 7, 11, 0.78)",
-                backdropFilter: "blur(18px)",
-                WebkitBackdropFilter: "blur(18px)",
+                background: "rgba(60, 40, 10, 0.45)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
               }}
               onClick={onPlayAgain}
             />
@@ -171,7 +171,7 @@ function ResultBlock({
       className="relative p-3.5 rounded-xl border"
       style={{
         borderColor: emphasized ? color : "var(--border)",
-        background: emphasized ? "rgba(255,255,255,0.025)" : "transparent",
+        background: emphasized ? "rgba(255, 248, 220, 0.55)" : "transparent",
       }}
     >
       <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-bone-mute">
